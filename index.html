@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Code Editor with CodeMirror and PyScript</title>
+    
+    <!-- CSS Styles for CodeMirror and external resources -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/dracula.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css">
+    
+    <!-- Custom CSS Styles -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            padding: 2rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: rgba(30, 30, 30, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .editor-container {
+            margin-bottom: 1.5rem;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .CodeMirror {
+            height: 300px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 1rem;
+        }
+
+        button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: white;
+            background-color: rgba(0,122,204,0.8);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: rgba(0,122,204,1);
+        }
+
+        #themeToggle {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+        }
+
+        #output {
+            background-color: rgba(40,44,52,0.95);
+            color: #abb2bf;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-top: 20px;
+            min-height: 100px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+        }
+    </style>
+    
+    <!-- CodeMirror Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closebrackets.min.js"></script>
+
+    <!-- PyScript (loaded last) -->
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+</head>
+<body>
+    <button id="themeToggle"><i class="ri-contrast-2-line"></i></button>
+    <div class="container">
+        <div class="editor-header">
+            <h1>Python Code Editor</h1>
+        </div>
+        <div class="editor-container">
+            <textarea id="codeEditor"></textarea>
+        </div>
+        <div class="button-container">
+            <button onclick="runCode()"><i class="ri-play-line"></i>Run Code</button>
+            <button onclick="copyCode()"><i class="ri-file-copy-line"></i>Copy Code</button>
+            <button onclick="copyConsole()"><i class="ri-file-copy-line"></i>Copy Console</button>
+        </div>
+        <h2>Console:</h2>
+        <div id="output"></div>
+    </div>
+
+    <py-script>
+        import sys
+        from io import StringIO
+
+        class OutputRedirector:
+            def __init__(self):
+                self.buffer = StringIO()
+
+            def write(self, text):
+                self.buffer.write(text)
+                Element('output').write(text)
+
+            def flush(self):
+                pass
+
+        sys.stdout = OutputRedirector()
+        sys.stderr = OutputRedirector()
+    </py-script>
+
+    <script>
+        let editor;
+        document.addEventListener('DOMContentLoaded', (event) => {
+            editor = CodeMirror.fromTextArea(document.getElementById("codeEditor"), {
+                mode: "python",
+                theme: "dracula",
+                lineNumbers: true,
+                autoCloseBrackets: true,
+                matchBrackets: true,
+                indentUnit: 4,
+                tabSize: 4,
+                indentWithTabs: true,
+                extraKeys: {"Tab": "indentMore", "Shift-Tab": "indentLess"}
+            });
+        });
+
+        function runCode() {
+            const code = editor.getValue();
+            const output = document.getElementById('output');
+            output.innerHTML = '';
+            const pyScriptElement = document.createElement('py-script');
+            pyScriptElement.textContent = code;
+            output.appendChild(pyScriptElement);
+            pyScriptElement.evaluate();
+        }
+
+        function copyCode() {
+            const code = editor.getValue();
+            navigator.clipboard.writeText(code).then(() => {
+                console.log('Code copied to clipboard.');
+            }).catch(err => {
+                console.error('Error copying code:', err);
+            });
+        }
+
+        function copyConsole() {
+            const consoleContent = document.getElementById('output').innerText;
+            navigator.clipboard.writeText(consoleContent).then(() => {
+                console.log('Console content copied to clipboard.');
+            }).catch(err => {
+                console.error('Error copying console content:', err);
+            });
+        }
+
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('light-theme');
+            if (document.body.classList.contains('light-theme')) {
+                editor.setOption('theme', 'default');
+            } else {
+                editor.setOption('theme', 'dracula');
+            }
+        });
+    </script>
+</body>
+</html>
